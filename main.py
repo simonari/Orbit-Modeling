@@ -1,15 +1,16 @@
 import os
 
-from mpmath import mp, mpf
 from mpmath import radians
 
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-from constants_lib import numbers_after_floating_point, gravitational_parameter, attractor_radius, precision
+from constants_lib import gravitational_parameter, attractor_radius, precision
 
 from Classes.OrbitObject import OrbitObject
+
+import satellites_groups as sg
 
 
 def calc_visibility_of_group(groups, number_of_latitude_points, number_of_longitude_points):
@@ -19,14 +20,19 @@ def calc_visibility_of_group(groups, number_of_latitude_points, number_of_longit
     figure = plt.figure()
     axis = figure.add_subplot(111)
 
-    map_ = [[0 for i in range(number_of_longitude_points)] for j in range(number_of_latitude_points)]
+    # map_ = [[0 for i in range(number_of_longitude_points)] for j in range(number_of_latitude_points)]
+    map_ = np.zeros((number_of_longitude_points, number_of_latitude_points), dtype=np.uint16)
 
-    latitude_step = radians(180) / number_of_latitude_points
-    longitude_step = radians(360) / number_of_longitude_points
+    latitude_step = np.deg2rad(180, dtype=np.float32) / number_of_latitude_points
+    longitude_step = np.deg2rad(360, dtype=np.float32) / number_of_longitude_points
 
     longitude_array = np.linspace(0, 360, number_of_longitude_points)
     latitude_array = np.linspace(-90, 90, number_of_latitude_points)
 
+    lon_lat_mesh = np.meshgrid(longitude_array, latitude_array)
+
+    # TODO Rework according to new data structure.
+    # TODO Rework according to meshgrid
     for group in groups:
         chosen_orbit = group.copy()
         for mean_anomaly in group[5]:
@@ -72,75 +78,13 @@ def calc_visibility_of_group(groups, number_of_latitude_points, number_of_longit
 
 
 def main():
-    mp.dps = numbers_after_floating_point + 1
-    mp.pretty = True
-
-    north_group_1 = [
-        mpf(6952),
-        0.7,
-        radians(56.4),
-        radians(60),
-        radians(270),
-        [radians(0), radians(90), radians(180), radians(270)]
-    ]
-    north_group_2 = [
-        mpf(6952),
-        0.7,
-        radians(56.4),
-        radians(180),
-        radians(270),
-        [radians(30), radians(120), radians(210), radians(300)]
-    ]
-    north_group_3 = [
-        mpf(6952),
-        0.7,
-        radians(56.4),
-        radians(300),
-        radians(270),
-        [radians(60), radians(150), radians(240), radians(330)]
-    ]
-
-    south_group_1 = [
-        mpf(6952),
-        0.7,
-        radians(56.4),
-        radians(60+60),
-        radians(90),
-        [radians(0), radians(90), radians(180), radians(270)]
-    ]
-    south_group_2 = [
-        mpf(6952),
-        0.7,
-        radians(56.4),
-        radians(180+60),
-        radians(90),
-        [radians(30), radians(120), radians(210), radians(300)]
-    ]
-    south_group_3 = [
-        mpf(6952),
-        0.7,
-        radians(56.4),
-        radians(300+60),
-        radians(90),
-        [radians(60), radians(150), radians(240), radians(330)]
-    ]
-
-    groups = [
-        north_group_1,
-        north_group_2,
-        north_group_3,
-        south_group_1,
-        south_group_2,
-        south_group_3
-        ]
-
-    n = 100
+    n = 10
     print(f"[+] Output image resolution: {n}x{n} pixels.")
     number_of_latitude_points = n
     number_of_longitude_points = n
 
     cycle_split_number = 8
-    step_cycle = radians(360) / cycle_split_number
+    cycle_step = np.deg2rad(360, dtype=np.float32) / cycle_split_number
 
     folder = os.getcwd()
     folder = os.path.join(folder, f"data",
@@ -150,13 +94,15 @@ def main():
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    for current_cycle in range(cycle_split_number):
+    for current_cycle, _ in enumerate(range(cycle_split_number)):
         print(f"[+] Current cycle: {current_cycle}")
-        for group in groups:
-            for i in range(4):
-                group[5][i] += step_cycle
+        satellites_groups = sg.groups
+        cycle_step_array = np.zeros(6, dtype=np.float32)
+        cycle_step_array[5] = cycle_step
 
-        figure = calc_visibility_of_group(groups, number_of_latitude_points, number_of_longitude_points)
+        satellites_groups += cycle_step_array
+
+        figure = calc_visibility_of_group(satellites_groups, number_of_latitude_points, number_of_longitude_points)
         figure.axes[0].set_title(f"Cycle {current_cycle}/{cycle_split_number}")
         figure.savefig(os.path.join(folder, f"cycle {current_cycle}_{cycle_split_number}"), bbox_inches='tight')
         print(f"[+] Plot saved to a file.")
@@ -165,4 +111,5 @@ def main():
 
 
 if __name__ == '__main__':
+    np.set_printoptions(precision=3, suppress=True)
     main()
