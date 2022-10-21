@@ -1,5 +1,5 @@
-data/
 .idea/
+data/
 __pycache__/
 Not used/
 test_main.py
