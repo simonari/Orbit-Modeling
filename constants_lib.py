@@ -1,11 +1,12 @@
-from mpmath import power
+from numpy import power
+from numpy import float32 as float
 
 # precision of calculation
 numbers_after_floating_point = 6
-precision = power(10, -numbers_after_floating_point)
+precision = 1 / power(10, numbers_after_floating_point)
 
 # gravitational parameter of attractor
-gravitational_parameter = 4902.801076
+gravitational_parameter = float(4902.801076)
 
 # radius of attractor
-attractor_radius = 1738
+attractor_radius = float(1738)

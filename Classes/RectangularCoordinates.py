@@ -1,10 +1,10 @@
-from mpmath import matrix
+from numpy import array
 
 
 class RectangularCoordinates:
     def __init__(self, *args):
         if len(args) > 0:
-            if isinstance(args[0], (list, matrix)):
+            if isinstance(args[0], (list, type(array))):
                 args = args[0]
 
         number_of_coordinates = len(args)
