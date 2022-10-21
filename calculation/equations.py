@@ -1,4 +1,4 @@
-from mpmath import sin
+from numpy import sin
 
 
 def kepler_equation_right_part(eccentric_anomaly, mean_anomaly, eccentricity):
