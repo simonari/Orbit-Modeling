@@ -1,4 +1,4 @@
-from mpmath import sin, cos
+from numpy import sin, cos
 
 from Classes.Vector3 import Vector3
 

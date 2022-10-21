@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import float32, array, deg2rad
+from numpy import float32, array, deg2rad, stack
 
 
 satellite_ng1_s1 = array((
@@ -218,17 +218,10 @@ satellite_sg3_s4 = array((
     deg2rad(330, dtype=float32)
 ))
 
-satellites_ng1 = np.stack((satellite_ng1_s1, satellite_ng1_s2, satellite_ng1_s3, satellite_ng1_s4))
-satellites_ng2 = np.stack((satellite_ng2_s1, satellite_ng2_s2, satellite_ng2_s3, satellite_ng2_s4))
-satellites_ng3 = np.stack((satellite_ng3_s1, satellite_ng3_s2, satellite_ng3_s3, satellite_ng3_s4))
-
-satellites_sg1 = np.stack((satellite_sg1_s1, satellite_sg1_s2, satellite_sg1_s3, satellite_sg1_s4))
-satellites_sg2 = np.stack((satellite_sg2_s1, satellite_sg2_s2, satellite_sg2_s3, satellite_sg2_s4))
-satellites_sg3 = np.stack((satellite_sg3_s1, satellite_sg3_s2, satellite_sg3_s3, satellite_sg3_s4))
-
-satellites_ng = np.stack((satellites_ng1, satellites_ng2, satellites_ng3))
-satellites_sg = np.stack((satellites_sg1, satellites_sg2, satellites_sg3))
-
-groups = np.stack((satellites_ng, satellites_sg))
-
-np.set_printoptions(precision=3, suppress=True)
+groups = stack((satellite_ng1_s1, satellite_ng1_s2, satellite_ng1_s3, satellite_ng1_s4,
+                satellite_ng2_s1, satellite_ng2_s2, satellite_ng2_s3, satellite_ng2_s4,
+                satellite_ng3_s1, satellite_ng3_s2, satellite_ng3_s3, satellite_ng3_s4,
+                satellite_sg1_s1, satellite_sg1_s2, satellite_sg1_s3, satellite_sg1_s4,
+                satellite_sg2_s1, satellite_sg2_s2, satellite_sg2_s3, satellite_sg2_s4,
+                satellite_sg3_s1, satellite_sg3_s2, satellite_sg3_s3, satellite_sg3_s4,
+                ))

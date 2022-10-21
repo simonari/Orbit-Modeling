@@ -1,6 +1,6 @@
-from mpmath import mpf
-from mpmath import sqrt
-from mpmath import acos
+from numpy import float32 as float
+from numpy import sqrt
+from numpy import arccos as acos
 
 from Classes.RectangularCoordinates import RectangularCoordinates
 
@@ -11,7 +11,7 @@ class Vector3(RectangularCoordinates):
         self.length = self.module()
 
     def __mul__(self, other):
-        result = mpf()
+        result = float()
         for index in range(3):
             result += self.coordinates[index] * other.coordinates[index]
 

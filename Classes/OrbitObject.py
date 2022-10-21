@@ -1,11 +1,13 @@
-from mpmath import sqrt, power
-from mpmath import mpf, matrix
-from mpmath import sin, cos, atan, atan2, pi
+from numpy import sqrt, power
+from numpy import float32 as float, array
+from numpy import sin, cos, arctan as atan, arctan2 as atan2
+
+from numpy import pi
 
 from Classes.Vector3 import Vector3
 from Classes.SurfaceObject import SurfaceObject
 
-from simple_iterations import simple_iterations
+from calculation.simple_iterations import simple_iterations
 
 
 class OrbitObject:
@@ -17,7 +19,7 @@ class OrbitObject:
 
     def __init__(self, gravitational_parameter, precision,
                  *kepler_elements,
-                 attractor_radius=mpf()):
+                 attractor_radius=float()):
         self.semimajor_axis = kepler_elements[0]
         self.eccentricity = kepler_elements[1]
         self.inclination = kepler_elements[2]
@@ -30,7 +32,7 @@ class OrbitObject:
 
         self.precision = precision
 
-        self.kepler_elements = matrix([
+        self.kepler_elements = array([
             self.semimajor_axis,
             self.eccentricity,
             self.inclination,
@@ -114,16 +116,16 @@ class OrbitObject:
         coordinates = self.rectangular_coordinates
         velocities = self.rectangular_velocities
 
-        radius = mpf()
+        radius = float()
         for coordinate in self.rectangular_coordinates:
             radius += power(coordinate, 2)
         radius = sqrt(radius)
 
-        velocity2 = mpf()
+        velocity2 = float()
         for velocity in self.rectangular_velocities:
             velocity2 += power(velocity, 2)
 
-        energy_integral = mpf(velocity2 / 2 - self.gravitational_parameter / radius)
+        energy_integral = float(velocity2 / 2 - self.gravitational_parameter / radius)
 
         area_integrals = [
             coordinates[1] * velocities[2] - coordinates[2] * velocities[1],
@@ -165,7 +167,7 @@ class OrbitObject:
             laplace_integrals[1] / laplace_integral * longitude_of_ascending_node_sin
         periapsis_argument = atan2(periapsis_argument_sin, periapsis_argument_cos)  # 5
 
-        xv = mpf()
+        xv = float()
         for i in range(3):
             xv += coordinates[i] * velocities[i]
 
@@ -175,7 +177,7 @@ class OrbitObject:
 
         mean_anomaly = eccentric_anomaly - eccentricity * eccentric_anomaly_sin  # 6
 
-        kepler_elements = matrix(
+        kepler_elements = array(
             [
                 semimajor_axis,
                 eccentricity,
