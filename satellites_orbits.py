@@ -218,7 +218,7 @@ satellite_sg3_s4 = array((
     deg2rad(330, dtype=float32)
 ))
 
-groups = stack((satellite_ng1_s1, satellite_ng1_s2, satellite_ng1_s3, satellite_ng1_s4,
+orbits = stack((satellite_ng1_s1, satellite_ng1_s2, satellite_ng1_s3, satellite_ng1_s4,
                 satellite_ng2_s1, satellite_ng2_s2, satellite_ng2_s3, satellite_ng2_s4,
                 satellite_ng3_s1, satellite_ng3_s2, satellite_ng3_s3, satellite_ng3_s4,
                 satellite_sg1_s1, satellite_sg1_s2, satellite_sg1_s3, satellite_sg1_s4,
