@@ -7,7 +7,7 @@ from numpy import pi
 from Classes.Vector3 import Vector3
 from Classes.SurfaceObject import SurfaceObject
 
-from calculation.simple_iterations import simple_iterations
+from calculation.methods.simple_iterations import simple_iterations
 
 
 class OrbitObject:

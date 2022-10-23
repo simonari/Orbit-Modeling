@@ -7,11 +7,14 @@ from numpy import deg2rad
 import satellites_orbits as sorbits
 
 from visibility_process import visibility_process
+from create_folder import create_folder
 
 
 def visibility(img_resolution,
-               cycle_number,
-               path):
+               cycle_number
+               ):
+    folder = create_folder(img_resolution, cycle_number)
+
     orbits = sorbits.orbits
 
     cycle_step = zeros(6, dtype=float)
@@ -21,7 +24,7 @@ def visibility(img_resolution,
               img_resolution,
               cycle_current,
               cycle_number,
-              path]
+              folder]
              for cycle_current in range(cycle_number)]
 
     process_pool = mp.Pool(mp.cpu_count())
