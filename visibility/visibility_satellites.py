@@ -17,15 +17,14 @@ from constants_lib import gravitational_parameter, attractor_radius, precision
 
 def visibility_satellites(orbits: array, img_resolution: tuple):
     _map = zeros(img_resolution, dtype=int)
-    lat_mesh, lon_mesh = meshgrid(linspace(-pi/2, pi/2, img_resolution[0]),
-                                  linspace(0,     2*pi, img_resolution[1]))
+    lat_mesh, lon_mesh = meshgrid(linspace(-pi / 2, pi / 2, img_resolution[0]),
+                                  linspace(0,       2 * pi, img_resolution[1]))
 
     for orbit_idx, orbit in enumerate(orbits):
         chosen_orbit = orbit.copy()
         print(f"[+] Currently working on {orbit_idx + 1} orbit", flush=True)
 
-        satellite = OrbitObject(gravitational_parameter, precision, *chosen_orbit)
-        satellite.set_attractor_radius(attractor_radius)
+        satellite = OrbitObject(chosen_orbit)
 
         mesh_iterator = nditer(lat_mesh, flags=['multi_index'])
         while not mesh_iterator.finished:

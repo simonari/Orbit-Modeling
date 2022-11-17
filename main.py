@@ -18,5 +18,5 @@ def main():
 if __name__ == '__main__':
     set_printoptions(precision=3, suppress=True)
     n = 100
-    cycle_number = 8
+    cycle_number = 4
     main()

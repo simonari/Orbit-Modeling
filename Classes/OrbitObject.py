@@ -9,6 +9,10 @@ from Classes.SurfaceObject import SurfaceObject
 
 from calculation.methods.simple_iterations import simple_iterations
 
+from constants_lib import precision
+from constants_lib import gravitational_parameter as mu
+from constants_lib import attractor_radius
+
 
 class OrbitObject:
     """
@@ -17,9 +21,7 @@ class OrbitObject:
     rectangular_coordinates = Vector3()
     rectangular_velocities = Vector3()
 
-    def __init__(self, gravitational_parameter, precision,
-                 *kepler_elements,
-                 attractor_radius=float()):
+    def __init__(self, kepler_elements):
         self.semimajor_axis = kepler_elements[0]
         self.eccentricity = kepler_elements[1]
         self.inclination = kepler_elements[2]
@@ -27,12 +29,13 @@ class OrbitObject:
         self.periapsis_argument = kepler_elements[4]
         self.mean_anomaly = kepler_elements[5]
 
-        self.gravitational_parameter = gravitational_parameter
-        self.attractor_radius = attractor_radius
+        self.mean_orbital_speed = sqrt(mu / power(self.semimajor_axis, 3))
+        self.period = 2 * pi / self.mean_orbital_speed
+        
+        self.kepler_to_rectangular()
 
-        self.precision = precision
-
-        self.kepler_elements = array([
+    def get_elements(self):
+        return array([
             self.semimajor_axis,
             self.eccentricity,
             self.inclination,
@@ -40,14 +43,6 @@ class OrbitObject:
             self.periapsis_argument,
             self.mean_anomaly
         ])
-        
-        self.kepler_to_rectangular(self.precision)
-
-    def set_attractor_radius(self, r):
-        """
-        Set radius of attractor
-        """
-        self.attractor_radius = r
 
     def kepler_equation_right_part(self, eccentric_anomaly):
         """
@@ -56,18 +51,19 @@ class OrbitObject:
         """
         return self.mean_anomaly + self.eccentricity * sin(eccentric_anomaly)
 
-    def move(self, start_epoch, end_epoch):
-        """
-        Move object on orbit from starting epoch to another unequal to starting
-        """
-        mean_orbital_speed = sqrt(self.gravitational_parameter / power(self.semimajor_axis, 3))
-        mean_anomaly = mean_orbital_speed * (end_epoch - start_epoch) + self.mean_anomaly
+    def move_by_dt(self, dt):
+        self.mean_anomaly += self.mean_orbital_speed * dt
+        self.kepler_to_rectangular()
 
-        kepler_elements_output = self.kepler_elements.copy()
-        kepler_elements_output[5] = mean_anomaly
-        return kepler_elements_output
+    def move_by_epoch(self, t1, t2):
+        self.mean_anomaly += self.mean_orbital_speed * (t2 - t1)
+        self.kepler_to_rectangular()
 
-    def kepler_to_rectangular(self, precision):
+    def move_by_mean_anomaly(self, step):
+        self.mean_anomaly += step
+        self.kepler_to_rectangular()
+
+    def kepler_to_rectangular(self):
         """
         Converts Kepler elements to rectangular coordinates
         """
@@ -98,7 +94,7 @@ class OrbitObject:
         betta_ = -sin(latitude_arg) * sin(l_asc_node) + cos(latitude_arg) * cos(l_asc_node) * cos(self.inclination)
         gamma_ = cos(latitude_arg) * sin(self.inclination)
 
-        a = sqrt(self.gravitational_parameter / orbital_parameter)
+        a = sqrt(mu / orbital_parameter)
         velocities.append(a * (alpha * self.eccentricity * sin(true_anomaly) +
                                alpha_ * (1 + self.eccentricity * cos(true_anomaly))))
         velocities.append(a * (betta * self.eccentricity * sin(true_anomaly) +
@@ -125,7 +121,7 @@ class OrbitObject:
         for velocity in self.rectangular_velocities:
             velocity2 += power(velocity, 2)
 
-        energy_integral = float(velocity2 / 2 - self.gravitational_parameter / radius)
+        energy_integral = float(velocity2 / 2 - mu / radius)
 
         area_integrals = [
             coordinates[1] * velocities[2] - coordinates[2] * velocities[1],
@@ -143,15 +139,15 @@ class OrbitObject:
             velocities[0] * area_integrals[1] - velocities[1] * area_integrals[0]
         ]
         for i in range(0, 3):
-            laplace_integrals[i] -= self.gravitational_parameter * coordinates[i] / radius
+            laplace_integrals[i] -= mu * coordinates[i] / radius
 
         laplace_integral = 0
         for integral in laplace_integrals:
             laplace_integral += power(integral, 2)
         laplace_integral = sqrt(laplace_integral)
 
-        semimajor_axis = -self.gravitational_parameter / (2 * energy_integral)  # 1
-        eccentricity = laplace_integral / self.gravitational_parameter  # 2
+        semimajor_axis = -mu / (2 * energy_integral)  # 1
+        eccentricity = laplace_integral / mu  # 2
 
         inclination_cos = area_integrals[2] / area_integral
         inclination_sin = sqrt(1 - power(inclination_cos, 2))
@@ -171,7 +167,7 @@ class OrbitObject:
         for i in range(3):
             xv += coordinates[i] * velocities[i]
 
-        eccentric_anomaly_sin = xv / (eccentricity * sqrt(self.gravitational_parameter * semimajor_axis))
+        eccentric_anomaly_sin = xv / (eccentricity * sqrt(mu * semimajor_axis))
         eccentric_anomaly_cos = (1 - radius / semimajor_axis) / eccentricity
         eccentric_anomaly = atan2(eccentric_anomaly_sin, eccentric_anomaly_cos)
 
@@ -198,7 +194,7 @@ class OrbitObject:
         """
         Checking visibility of OrbitObject from position (latitude, longitude) of SurfaceObject
         """
-        surface_object = SurfaceObject(latitude, longitude, self.attractor_radius)
+        surface_object = SurfaceObject(latitude, longitude)
         angle = Vector3.angle(self.rectangular_coordinates - surface_object.rectangular_coordinates,
                               surface_object.rectangular_coordinates)
 
