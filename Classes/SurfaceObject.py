@@ -1,13 +1,14 @@
 from numpy import sin, cos
 
 from Classes.Vector3 import Vector3
+from constants_lib import attractor_radius
 
 
 class SurfaceObject:
-    def __init__(self, latitude, longitude, radius):
+    def __init__(self, latitude, longitude):
         self.latitude = latitude
         self.longitude = longitude
-        self.radius = radius
+        self.radius = attractor_radius
 
         self.__geocentric_to_rectangular()
 

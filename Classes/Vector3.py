@@ -1,6 +1,7 @@
 from numpy import float32 as float
 from numpy import sqrt
 from numpy import arccos as acos
+from numpy import array
 
 from Classes.RectangularCoordinates import RectangularCoordinates
 
@@ -26,6 +27,9 @@ class Vector3(RectangularCoordinates):
     def __repr__(self):
         return f"{self.x} {self.y} {self.z}"
 
+    def __len__(self):
+        return 3
+
     def __iter__(self):
         return Vector3Iterator(self)
 
@@ -37,6 +41,9 @@ class Vector3(RectangularCoordinates):
 
     def angle(self, other):
         return acos(self * other / (self.length * other.length))
+
+    def to_ndarray(self):
+        return array([self.x, self.y, self.z])
 
 
 class Vector3Iterator:

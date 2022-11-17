@@ -1,5 +1,5 @@
-from visibility_map import visibility_map
-from visibility_satellites import visibility_satellites
+from .visibility_map import visibility_map
+from .visibility_satellites import visibility_satellites
 
 
 def visibility_process(orbits,

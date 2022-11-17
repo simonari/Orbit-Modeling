@@ -4,18 +4,14 @@ from numpy import float32 as float
 from numpy import zeros
 from numpy import deg2rad
 
-import satellites_orbits as sorbits
+from satellites_orbits import orbits
 
-from visibility_process import visibility_process
+from .visibility_process import visibility_process
 from create_folder import create_folder
 
 
-def visibility(img_resolution,
-               cycle_number
-               ):
+def visibility(img_resolution, cycle_number):
     folder = create_folder(img_resolution, cycle_number)
-
-    orbits = sorbits.orbits
 
     cycle_step = zeros(6, dtype=float)
     cycle_step[5] = deg2rad(360, dtype=float) / cycle_number
