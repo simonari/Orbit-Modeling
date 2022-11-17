@@ -1,5 +1,5 @@
 from numpy import empty
-from ..equations import f
+from calculation.equations import f
 
 
 def runge_kutta_4(state, step):
