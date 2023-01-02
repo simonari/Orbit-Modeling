@@ -196,7 +196,3 @@ betas = array([
      -0.675000000000000000000000000000000000000000000000000000000000,
      0],
 ])
-
-print(alphas.shape)
-print(cs.shape)
-print(betas.shape)
