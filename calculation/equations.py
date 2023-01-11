@@ -14,7 +14,9 @@ def f(t, state):
     Right part of motion's differential equation.
     Args:
             t: Time of given state
-        state: (r, v) vector, where r - coordinates, v - velocities.
+        state: (r, v) vector, where r - coordinates, v - velocities
+    Returns:
+        Right part of differential equation
     """
     radius = sqrt(power(state[0], 2) + power(state[1], 2) + power(state[2], 2))
 
