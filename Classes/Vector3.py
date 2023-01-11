@@ -1,4 +1,4 @@
-from numpy import float32 as float
+from numpy import float64 as float
 from numpy import sqrt
 from numpy import arccos as acos
 from numpy import array

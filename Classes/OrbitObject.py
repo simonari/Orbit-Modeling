@@ -1,5 +1,5 @@
 from numpy import sqrt, power
-from numpy import float32 as float, array
+from numpy import float64 as float, array
 from numpy import sin, cos, arctan as atan, arctan2 as atan2
 
 from numpy import pi

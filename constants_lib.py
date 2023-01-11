@@ -1,7 +1,7 @@
-from numpy import float32 as float
+from numpy import float64 as float
 
 # precision of calculation
-numbers_after_floating_point = 6
+numbers_after_floating_point = 12
 precision = float(f"1e-{numbers_after_floating_point}")
 
 # gravitational parameter of attractor
