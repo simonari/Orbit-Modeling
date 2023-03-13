@@ -12,7 +12,7 @@ from Classes.OrbitObject import OrbitObject
 
 # constants
 from numpy import pi
-from constants_lib import gravitational_parameter, attractor_radius, precision
+from constants_lib import gravitational_parameter_moon, attractor_radius, precision
 
 
 def visibility_satellites(orbits: array, img_resolution: tuple):

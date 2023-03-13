@@ -7,12 +7,13 @@ from numpy import pi
 from Classes.Vector3 import Vector3
 from Classes.SurfaceObject import SurfaceObject
 
-from calculation.methods.simple_iterations import simple_iterations
+from calculation.simple_iterations import simple_iterations
 
 from constants_lib import precision
-from constants_lib import gravitational_parameter as mu
-from constants_lib import attractor_radius
+from constants_lib import gravitational_parameter_moon as mu
 
+import numpy as np
+from scipy.integrate import solve_ivp
 
 class OrbitObject:
     """
@@ -31,7 +32,8 @@ class OrbitObject:
 
         self.mean_orbital_speed = sqrt(mu / power(self.semimajor_axis, 3))
         self.period = 2 * pi / self.mean_orbital_speed
-        
+
+        self.mu = mu
         self.kepler_to_rectangular()
 
     def get_elements(self):
@@ -202,3 +204,35 @@ class OrbitObject:
             return True
         else:
             return False
+
+    def f(self, t, state):
+        radius = np.linalg.norm(state)
+
+        return array([
+            state[3],
+            state[4],
+            state[5],
+            -mu * state[0] / power(radius, 3),
+            -mu * state[1] / power(radius, 3),
+            -mu * state[2] / power(radius, 3),
+        ])
+
+
+    def calculate_coordinates(self, t0_jd, t0_s=0, n=1):
+        state = array([*self.rectangular_coordinates.to_ndarray(),
+                       *self.rectangular_velocities.to_ndarray()])
+
+        sol = solve_ivp(self.f, (t0_s, n * self.period), state,
+                        method="DOP853",
+                        rtol=precision,
+                        # atol=(
+                        #     precision, precision, precision,
+                        #     precision * 1e-2, precision * 1e-2, precision * 1e-2,
+                        # )
+                        atol=0,
+                        # max_step=1
+                        # dense_output=True,
+                        # vectorized=True
+                        )
+
+        return sol
