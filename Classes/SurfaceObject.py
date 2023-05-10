@@ -1,6 +1,5 @@
-from numpy import sin, cos
+import numpy as np
 
-from Classes.Vector3 import Vector3
 from constants_lib import attractor_radius
 
 
@@ -10,11 +9,12 @@ class SurfaceObject:
         self.longitude = longitude
         self.radius = attractor_radius
 
+        self.cs_rec = np.zeros(3)
         self.__geocentric_to_rectangular()
 
     def __geocentric_to_rectangular(self):
-        self.x = self.radius * cos(self.longitude) * cos(self.latitude)
-        self.y = self.radius * sin(self.longitude) * cos(self.latitude)
-        self.z = self.radius * sin(self.latitude)
+        self.cs_rec[0] = np.cos(self.longitude) * np.cos(self.latitude)
+        self.cs_rec[1] = np.sin(self.longitude) * np.cos(self.latitude)
+        self.cs_rec[2] = np.sin(self.latitude)
 
-        self.rectangular_coordinates = Vector3(self.x, self.y, self.z)
+        self.cs_rec *= attractor_radius

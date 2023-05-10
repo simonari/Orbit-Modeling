@@ -1,24 +1,12 @@
-# types
-from numpy import nditer
-from numpy import uint16 as int
-from numpy import array
+import numpy as np
 
-# functions
-from numpy import linspace, zeros
-from numpy import meshgrid
-
-# classes
 from Classes.OrbitObject import OrbitObject
 
-# constants
-from numpy import pi
-from constants_lib import gravitational_parameter_moon, attractor_radius, precision
 
-
-def visibility_satellites(orbits: array, img_resolution: tuple):
-    _map = zeros(img_resolution, dtype=int)
-    lat_mesh, lon_mesh = meshgrid(linspace(-pi / 2, pi / 2, img_resolution[0]),
-                                  linspace(0,       2 * pi, img_resolution[1]))
+def visibility_satellites(orbits: np.ndarray, img_resolution: tuple):
+    _map = np.zeros(img_resolution, dtype=int)
+    lat_mesh, lon_mesh = np.meshgrid(np.linspace(-np.pi / 2, np.pi / 2, img_resolution[0]),
+                                     np.linspace(0, 2 * np.pi, img_resolution[1]))
 
     for orbit_idx, orbit in enumerate(orbits):
         chosen_orbit = orbit.copy()
@@ -26,7 +14,7 @@ def visibility_satellites(orbits: array, img_resolution: tuple):
 
         satellite = OrbitObject(chosen_orbit)
 
-        mesh_iterator = nditer(lat_mesh, flags=['multi_index'])
+        mesh_iterator = np.nditer(lat_mesh, flags=['multi_index'])
         while not mesh_iterator.finished:
             idx_lon, idx_lat = mesh_iterator.multi_index
             if satellite.is_visible(lat_mesh[idx_lon][idx_lat], lon_mesh[idx_lon][idx_lat]):

@@ -1,15 +1,10 @@
-from .OrbitObject import OrbitObject
-from numpy import cos, sin
-from numpy import power, sqrt
-from numpy.linalg import norm
-
-from numpy import array
-from numpy import float64 as float
-
+import numpy as np
+import numpy.linalg as linalg
 from scipy.integrate import solve_ivp
 
-from calculation.time import jdutil
 from constants_lib import precision as prec
+from .OrbitObject import OrbitObject
+from tqdm import tqdm
 
 
 class OrbitObjectPerturbed1(OrbitObject):
@@ -19,69 +14,71 @@ class OrbitObjectPerturbed1(OrbitObject):
         self.e1e2_p = perturbation_body_params.e1e2
         self.a_p = perturbation_body_params.a
         self.n_p = perturbation_body_params.n
+        self.x_p_arr = []
 
-    def force_perturbation(self, epoch_current, epoch_start):
+    def geo2moon(self, cs):
+        matrix = np.array(
+            [
+                [.998502177e+0, -.547119902e-1, .000000000e+0],
+                [.498452152e-1, .909682790e+0, .412301681e+0],
+                [-.225578455e-1, -.411684126e+0, .911047378e+0],
+            ]
+        )
+
+        return matrix.dot(cs)
+
+    def force_perturbation(self, state, epoch_current):
         """Additional force caused by object
 
         Args:
-            that defines orbital plane of object
+            state: State of an object
             epoch_current: Current epoch
-            epoch_start: Starting epoch
         Returns:
-            Force caused by moving object at moment t
+            Force caused by moving object at a moment t
         """
-        x = self.rectangular_coordinates.to_ndarray()
-        x_p = self.coordinates_perturbation(epoch_current, epoch_start)
-        return -self.mu_p * ((x - x_p) / power(norm(x - x_p), 3) + x_p / power(norm(x_p), 3))
+        x = state[:3]
+        nu_ = self.n_p * epoch_current
 
-    def coordinates_perturbation(self, epoch_current, epoch_start):
-        """
-        Coordinates of object that moves on the round orbit around a body.
+        x_p = self.a_p * (self.e1e2_p[0] * np.cos(nu_) + self.e1e2_p[1] * np.sin(nu_))
 
-        Args:
-            epoch_current: Current epoch
-            epoch_start: Starting epoch
-        Returns:
-            Coordinates of moving object on moment t
-        """
+        x_p = self.geo2moon(x_p)
+        # x_p[2] = 0
+        self.x_p_arr    .append(x_p)
 
-        nu_ = self.anomaly_perturbation(epoch_current, epoch_start)
-        return self.a_p * (self.e1e2_p[0] * cos(nu_) + self.e1e2_p[1] * sin(nu_))
+        return -self.mu_p * ((x - x_p) / np.power(linalg.norm(x - x_p), 3) +
+                             x_p / np.power(linalg.norm(x_p), 3))
 
-    def anomaly_perturbation(self, epoch_current, epoch_start):
-        """
-        Anomaly of object that moves on the round orbit around a body
+    def f_p(self, t, state):
+        # if (t + t_old) // self.T
 
-        Args:
-            epoch_current: Current epoch
-            epoch_start: Starting epoch
-        Returns:
-            nu: Anomaly of moving object
-        """
-        return self.n_p * (epoch_current - epoch_start)
+        t_jd = float(t / 86400)
 
-    def f_p(self, t, state, t0_jd):
-        t_jd = t0_jd + float(t / 86400)
-        f_add = self.force_perturbation(t_jd, t0_jd)
+        f_add = self.force_perturbation(state, t_jd)
 
-        radius = sqrt(sum(power(state[0:3], 2)))
+        result = self.f(t, state)
+        result[3:] += f_add
 
-        return array([
-            state[3],
-            state[4],
-            state[5],
-            -self.mu * state[0] / power(radius, 3) + f_add[0],
-            -self.mu * state[1] / power(radius, 3) + f_add[1],
-            -self.mu * state[2] / power(radius, 3) + f_add[2]
-        ])
+        return result
 
-    def calculate_coordinates(self, t0_jd, t0_s=0, n=1):
-        state = array([*self.rectangular_coordinates.to_ndarray(),
-                       *self.rectangular_velocities.to_ndarray()])
+    def calculate_coordinates(self, t0_s=0, n=1):
+        state = np.hstack((self.cs_rec, self.vs_rec))
 
-        sol = solve_ivp(self.f_p, (t0_s, n * self.period), state,
+        # pbar = tqdm(total=n)
+        # t_old = t0_s
+
+
+        # rtol = prec * 1e-2 -- 78s
+        # rtol = prec * 1e-1 -- 60s
+        solution = solve_ivp(self.f_p,
+                        (t0_s, n * self.T),
+                        state,
                         method="DOP853",
-                        rtol=prec * 10e2, atol=prec,
-                        args=(t0_jd,))
+                        rtol=prec * 1e-1,
+                        atol=prec,
+                        # args=(pbar, t_old)
+                        )
 
-        return sol
+        self.cs_rec, self.vs_rec = np.hsplit(solution.y.transpose()[-1], 2)
+        self.rectangular_to_kepler(self.cs_rec, self.vs_rec)
+
+        return solution

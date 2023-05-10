@@ -1,49 +1,45 @@
-from numpy import sqrt, power
-from numpy import float64 as float, array
-from numpy import sin, cos, arctan as atan, arctan2 as atan2
+import numpy as np
+import numpy.linalg as linalg
 
-from numpy import pi
-
-from Classes.Vector3 import Vector3
 from Classes.SurfaceObject import SurfaceObject
-
-from calculation.simple_iterations import simple_iterations
 
 from constants_lib import precision
 from constants_lib import gravitational_parameter_moon as mu
 
-import numpy as np
 from scipy.integrate import solve_ivp
 
 class OrbitObject:
     """
     OrbitObject class object
     """
-    rectangular_coordinates = Vector3()
-    rectangular_velocities = Vector3()
+    cs_rec = np.zeros((3, 1))
+    vs_rec = np.zeros((3, 1))
 
     def __init__(self, kepler_elements):
-        self.semimajor_axis = kepler_elements[0]
-        self.eccentricity = kepler_elements[1]
-        self.inclination = kepler_elements[2]
-        self.longitude_of_ascending_node = kepler_elements[3]
-        self.periapsis_argument = kepler_elements[4]
-        self.mean_anomaly = kepler_elements[5]
+        self.a = kepler_elements[0]
+        self.e = kepler_elements[1]
+        self.inc = kepler_elements[2]
+        self.w_lon = kepler_elements[3]
+        self.w_arg = kepler_elements[4]
+        self.anomaly_m = kepler_elements[5]
 
-        self.mean_orbital_speed = sqrt(mu / power(self.semimajor_axis, 3))
-        self.period = 2 * pi / self.mean_orbital_speed
+        self.cs_rec = np.zeros(3)
+        self.vs_rec = np.zeros(3)
+
+        self.n = np.sqrt(mu / np.power(self.a, 3))
+        self.T = 2 * np.pi / self.n
 
         self.mu = mu
         self.kepler_to_rectangular()
 
     def get_elements(self):
-        return array([
-            self.semimajor_axis,
-            self.eccentricity,
-            self.inclination,
-            self.longitude_of_ascending_node,
-            self.periapsis_argument,
-            self.mean_anomaly
+        return np.array([
+            self.a,
+            self.e,
+            self.inc,
+            self.w_lon,
+            self.w_arg,
+            self.anomaly_m
         ])
 
     def kepler_equation_right_part(self, eccentric_anomaly):
@@ -51,188 +47,158 @@ class OrbitObject:
         Kepler's equation: E = M + e*sin(E)
         Right part of it: value = M + e*sin(E)
         """
-        return self.mean_anomaly + self.eccentricity * sin(eccentric_anomaly)
+        return self.anomaly_m + self.e * np.sin(eccentric_anomaly)
 
     def move_by_dt(self, dt):
-        self.mean_anomaly += self.mean_orbital_speed * dt
+        self.anomaly_m += self.n * dt
         self.kepler_to_rectangular()
 
     def move_by_epoch(self, t1, t2):
-        self.mean_anomaly += self.mean_orbital_speed * (t2 - t1)
+        self.anomaly_m += self.n * (t2 - t1)
         self.kepler_to_rectangular()
 
     def move_by_mean_anomaly(self, step):
-        self.mean_anomaly += step
+        self.anomaly_m += step
         self.kepler_to_rectangular()
 
     def kepler_to_rectangular(self):
-        """
-        Converts Kepler elements to rectangular coordinates
-        """
-        starting_eccentric_anomaly = self.mean_anomaly
-        eccentric_anomaly = simple_iterations(self.kepler_equation_right_part,
-                                              starting_eccentric_anomaly, precision)
+        a = self.a
+        e = self.e
+        inc = self.inc
+        w_lon = self.w_lon
+        w_arg = self.w_arg
+        anomaly_m = self.anomaly_m
 
-        true_anomaly = atan2(sqrt(1 - power(self.eccentricity, 2)) * sin(eccentric_anomaly),
-                             (cos(eccentric_anomaly) - self.eccentricity))
+        ea = anomaly_m
 
-        latitude_arg = self.periapsis_argument + true_anomaly
-        orbital_parameter = self.semimajor_axis * (1 - power(self.eccentricity, 2))
-        radius = orbital_parameter / (1 + self.eccentricity * cos(true_anomaly))
-        coordinates = []
+        while True:
+            sea = np.sin(ea)
+            cea = np.cos(ea)
+            ea_ = ea - (ea - e * sea - anomaly_m) / (1 - e * cea)
+            if abs(ea - ea_) < precision: break
+            ea = ea_
 
-        l_asc_node = self.longitude_of_ascending_node
-        alpha = cos(latitude_arg) * cos(l_asc_node) - sin(latitude_arg) * sin(l_asc_node) * cos(self.inclination)
-        betta = cos(latitude_arg) * sin(l_asc_node) + sin(latitude_arg) * cos(l_asc_node) * cos(self.inclination)
-        gamma = sin(latitude_arg) * sin(self.inclination)
+        r2a = (1 - e * cea)
+        r = a * r2a
 
-        coordinates.append(alpha * radius)
-        coordinates.append(betta * radius)
-        coordinates.append(gamma * radius)
+        sv = np.sqrt(1 - pow(e, 2)) * np.sin(ea) / r2a
+        cv = (cea - e) / r2a
+        v = np.arctan2(sv, cv)
 
-        velocities = []
+        u = v + w_arg
 
-        alpha_ = -sin(latitude_arg) * cos(l_asc_node) - cos(latitude_arg) * sin(l_asc_node) * cos(self.inclination)
-        betta_ = -sin(latitude_arg) * sin(l_asc_node) + cos(latitude_arg) * cos(l_asc_node) * cos(self.inclination)
-        gamma_ = cos(latitude_arg) * sin(self.inclination)
+        su = np.sin(u)
+        cu = np.cos(u)
+        so = np.sin(w_lon)
+        co = np.cos(w_lon)
+        sinc = np.sin(inc)
+        cinc = np.cos(inc)
 
-        a = sqrt(mu / orbital_parameter)
-        velocities.append(a * (alpha * self.eccentricity * sin(true_anomaly) +
-                               alpha_ * (1 + self.eccentricity * cos(true_anomaly))))
-        velocities.append(a * (betta * self.eccentricity * sin(true_anomaly) +
-                               betta_ * (1 + self.eccentricity * cos(true_anomaly))))
-        velocities.append(a * (gamma * self.eccentricity * sin(true_anomaly) +
-                               gamma_ * (1 + self.eccentricity * cos(true_anomaly))))
+        self.cs_rec[0] = cu * co - su * so * cinc
+        self.cs_rec[1] = cu * so + su * co * cinc
+        self.cs_rec[2] = su * sinc
+        self.cs_rec *= r
 
-        self.rectangular_coordinates = Vector3(coordinates)
-        self.rectangular_velocities = Vector3(velocities)
+        mp = np.sqrt(mu / (a * (1 - np.power(e, 2))))
+        vr = mp * e * sv / r
+        vn = mp * (1 + e * cv)
 
-    def rectangular_to_kepler(self):
-        """
-        Converts rectangular coordinates to Kepler elements
-        """
-        coordinates = self.rectangular_coordinates
-        velocities = self.rectangular_velocities
+        self.vs_rec[0] = (-su * co - cu * so * cinc)
+        self.vs_rec[1] = (-su * so - cu * co * cinc)
+        self.vs_rec[2] = cu * sinc
+        self.vs_rec *= vn
+        self.vs_rec += vr * self.cs_rec
 
-        radius = float()
-        for coordinate in self.rectangular_coordinates:
-            radius += power(coordinate, 2)
-        radius = sqrt(radius)
+    def rectangular_to_kepler(self, cs=cs_rec, vs=vs_rec, mu=mu):
+        r = linalg.norm(cs)
+        v2 = np.power(vs, 2).sum()
 
-        velocity2 = float()
-        for velocity in self.rectangular_velocities:
-            velocity2 += power(velocity, 2)
+        ci = np.array([
+            cs[1] * vs[2] - cs[2] * vs[1],
+            cs[2] * vs[0] - cs[0] * vs[2],
+            cs[0] * vs[1] - cs[1] * vs[0]
+        ])
 
-        energy_integral = float(velocity2 / 2 - mu / radius)
+        c = linalg.norm(ci)
 
-        area_integrals = [
-            coordinates[1] * velocities[2] - coordinates[2] * velocities[1],
-            coordinates[2] * velocities[0] - coordinates[0] * velocities[2],
-            coordinates[0] * velocities[1] - coordinates[1] * velocities[0]
-        ]
-        area_integral = 0
-        for integral in area_integrals:
-            area_integral += power(integral, 2)
-        area_integral = sqrt(area_integral)
+        fi = np.array([
+            ci[2] * vs[1] - ci[1] * vs[2],
+            ci[0] * vs[2] - ci[2] * vs[0],
+            ci[1] * vs[0] - ci[0] * vs[1]
+        ])
 
-        laplace_integrals = [
-            velocities[1] * area_integrals[2] - velocities[2] * area_integrals[1],
-            velocities[2] * area_integrals[0] - velocities[0] * area_integrals[2],
-            velocities[0] * area_integrals[1] - velocities[1] * area_integrals[0]
-        ]
-        for i in range(0, 3):
-            laplace_integrals[i] -= mu * coordinates[i] / radius
+        fi += -mu * cs / r
+        f = linalg.norm(fi)
 
-        laplace_integral = 0
-        for integral in laplace_integrals:
-            laplace_integral += power(integral, 2)
-        laplace_integral = sqrt(laplace_integral)
+        h = v2 / 2 - mu / r
 
-        semimajor_axis = -mu / (2 * energy_integral)  # 1
-        eccentricity = laplace_integral / mu  # 2
+        a = -mu / (2 * h)
+        e = f / mu
+        inc = np.arccos(ci[2] / c)
+        w_lon = np.arctan2(ci[0], -ci[1])
 
-        inclination_cos = area_integrals[2] / area_integral
-        inclination_sin = sqrt(1 - power(inclination_cos, 2))
-        inclination = atan(inclination_sin / inclination_cos)  # 3
+        sw = (-fi[0] * ci[0] - fi[1] * ci[1]) / ci[2]
+        cw = (-fi[0] * ci[1] + fi[1] * ci[0]) / c
 
-        longitude_of_ascending_node_sin = area_integrals[0] / (area_integral * inclination_sin)
-        longitude_of_ascending_node_cos = -area_integrals[1] / (area_integral * inclination_sin)
-        longitude_of_ascending_node = atan2(longitude_of_ascending_node_sin, longitude_of_ascending_node_cos)  # 4
+        w_arg = np.arctan2(sw, cw)
 
-        periapsis_argument_sin = laplace_integrals[2] / (laplace_integral * inclination_sin)
-        periapsis_argument_cos = \
-            laplace_integrals[0] / laplace_integral * longitude_of_ascending_node_cos + \
-            laplace_integrals[1] / laplace_integral * longitude_of_ascending_node_sin
-        periapsis_argument = atan2(periapsis_argument_sin, periapsis_argument_cos)  # 5
+        su = (-cs[0] * ci[0] - cs[1] * ci[1]) / ci[2]
+        cu = (-cs[0] * ci[1] + cs[1] * ci[0]) / c
 
-        xv = float()
-        for i in range(3):
-            xv += coordinates[i] * velocities[i]
+        u = np.arctan2(su, cu)
+        v = u - w_arg
 
-        eccentric_anomaly_sin = xv / (eccentricity * sqrt(mu * semimajor_axis))
-        eccentric_anomaly_cos = (1 - radius / semimajor_axis) / eccentricity
-        eccentric_anomaly = atan2(eccentric_anomaly_sin, eccentric_anomaly_cos)
+        sea = r * np.sin(v) / a / np.sqrt(1 - np.power(e, 2))
+        cea = r * np.cos(v) / a + e
+        ea = np.arctan2(sea, cea)
+        anomaly_m = ea - e * sea
 
-        mean_anomaly = eccentric_anomaly - eccentricity * eccentric_anomaly_sin  # 6
+        self.inc = inc + 2 * np.pi if inc < 0 else inc
+        self.w_lon = w_lon + 2 * np.pi if w_lon < 0 else w_lon
+        self.w_arg = w_arg + 2 * np.pi if w_arg < 0 else w_arg
+        self.anomaly_m = anomaly_m + 2 * np.pi if anomaly_m < 0 else anomaly_m
 
-        kepler_elements = array(
-            [
-                semimajor_axis,
-                eccentricity,
-                inclination,
-                longitude_of_ascending_node,
-                periapsis_argument,
-                mean_anomaly
-            ]
-        )
-
-        for element in kepler_elements:
-            if element < 0:
-                element += 2 * pi
-
-        return kepler_elements
+        return np.array([a, e, inc, w_lon, w_arg, anomaly_m])
 
     def is_visible(self, latitude, longitude):
         """
         Checking visibility of OrbitObject from position (latitude, longitude) of SurfaceObject
         """
         surface_object = SurfaceObject(latitude, longitude)
-        angle = Vector3.angle(self.rectangular_coordinates - surface_object.rectangular_coordinates,
-                              surface_object.rectangular_coordinates)
+        u1 = (self.cs_rec - surface_object.cs_rec) / linalg.norm(self.cs_rec - surface_object.cs_rec)
+        u2 = surface_object.cs_rec / linalg.norm(surface_object.cs_rec)
+        angle = np.arccos(u1 * u2)
 
-        if angle <= pi / 2:
+        if angle <= np.pi / 2:
             return True
         else:
             return False
 
     def f(self, t, state):
-        radius = np.linalg.norm(state)
+        radius = linalg.norm(state[:3])
 
-        return array([
+        return np.array([
             state[3],
             state[4],
             state[5],
-            -mu * state[0] / power(radius, 3),
-            -mu * state[1] / power(radius, 3),
-            -mu * state[2] / power(radius, 3),
+            -mu * state[0] / np.power(radius, 3),
+            -mu * state[1] / np.power(radius, 3),
+            -mu * state[2] / np.power(radius, 3),
         ])
 
+    def calculate_coordinates(self, t0_s=0, n=1):
+        state = np.hstack((self.cs_rec,
+                           self.vs_rec))
 
-    def calculate_coordinates(self, t0_jd, t0_s=0, n=1):
-        state = array([*self.rectangular_coordinates.to_ndarray(),
-                       *self.rectangular_velocities.to_ndarray()])
-
-        sol = solve_ivp(self.f, (t0_s, n * self.period), state,
+        sol = solve_ivp(self.f,
+                        (t0_s, n * self.T),
+                        state,
                         method="DOP853",
-                        rtol=precision,
-                        # atol=(
-                        #     precision, precision, precision,
-                        #     precision * 1e-2, precision * 1e-2, precision * 1e-2,
-                        # )
-                        atol=0,
-                        # max_step=1
-                        # dense_output=True,
-                        # vectorized=True
+                        rtol=0,
+                        atol=precision,
                         )
+
+        self.cs_rec, self.vs_rec = np.hsplit(sol.y.transpose()[-1], 2)
+        self.rectangular_to_kepler(self.cs_rec, self.vs_rec)
 
         return sol
