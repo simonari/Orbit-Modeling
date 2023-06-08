@@ -2,13 +2,13 @@ import os
 import numpy as np
 import pandas as pd
 
-def read_orbits():
-    path_to_file = os.path.join(os.getcwd(), "data", "input", "orbits.txt")
+def read_orbits(type):
+    path_to_file = os.path.join(os.getcwd(), "data", "input", f"orbits_{type}.txt")
     try:
         f = open(path_to_file, "r")
     except FileNotFoundError:
         print("[!] File not found.")
-        return None
+        raise FileNotFoundError
 
     elements = []
     while True:
@@ -32,7 +32,7 @@ def read_current_elements():
         df = pd.read_csv(path_to_file)
     except FileNotFoundError:
         print("[!] File not found.")
-        return None
+        raise FileNotFoundError
 
     return df
 
@@ -44,6 +44,6 @@ def read_stored_elements(directory, file):
         df = pd.read_csv(path_to_file)
     except FileNotFoundError:
         print("[!] File not found.")
-        return None
+        raise FileNotFoundError
 
     return df

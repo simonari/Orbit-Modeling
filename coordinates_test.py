@@ -17,17 +17,17 @@ def main():
 
 def plots():
     time_start = dt.now()
-    n_periods = 100
+    n_periods = 3000
 
     orbit = satellites_orbits.satellite_ng1_s1
     orbit[1] = 0.
+    # orbit[2] = np.deg2rad(64.8)
     sat = OrbitObjectPerturbed1(orbit, earth)
 
     t = n_periods * sat.T
 
     sol = sat.calculate_coordinates(n=n_periods)
     cs, vs = np.hsplit(sol.y.transpose(), 2)
-    # x_p = np.linalg.norm(np.array(sat.x_p_arr), axis=1)
 
     k = 5
     elements = np.zeros((cs.shape[0], k))
@@ -39,41 +39,55 @@ def plots():
     n = 10
     ticks = np.linspace(0, t, n+1)
     labels = np.linspace(0, n_periods, n+1, dtype=int)
-
-    fig = plt.figure()
-    ax_a = fig.add_subplot(231)
-    ax_e = fig.add_subplot(232)
-    ax_i = fig.add_subplot(233)
-    ax_w_lon = fig.add_subplot(234)
-    ax_w_arg = fig.add_subplot(235)
-
-    ax_a.set_title(f"a")
-    ax_e.set_title(f"e")
-    ax_i.set_title(f"i")
-    ax_w_lon.set_title(r"$\Omega$")
-    ax_w_arg.set_title(r"$\omega$")
-
     time_scale = np.linspace(0, t, cs.shape[0])
 
-    ax_a.plot(time_scale, elements[0], linewidth=.5)
-    ax_e.plot(time_scale, elements[1], linewidth=.5)
-    ax_i.plot(time_scale, np.rad2deg(elements[2]), linewidth=.5)
-    ax_w_lon.plot(time_scale, np.rad2deg(elements[3]), linewidth=.5, linestyle="", marker=".", markersize=2.5, alpha=1)
-    ax_w_arg.plot(time_scale, np.rad2deg(elements[4]), linewidth=.5, linestyle="", marker=".", markersize=2.5, alpha=1)
+    names = ["a", "e", "i", "O", "w"]
+    names_greek = ["a", "e", "i", r"$\Omega$", r"$\omega$"]
+    units = ["км", "", r"$\circ$", r"$\circ$", r"$\circ$"]
 
+    styles = {
+        "a": {"c":"black", "lw":.75},
+        "e": {"c":"black", "lw":.75},
+        "i": {"c":"black", "lw":.75},
+        "O": {"c":"black", "lw":.75, "ls":"", "marker":".", "ms":2.5, "alpha":1},
+        "w": {"c":"black", "lw":.75, "ls":"", "marker":".", "ms":2.5, "alpha":1}
+    }
 
-    ax_a.set_xticks(ticks, labels=labels)
-    ax_e.set_xticks(ticks, labels=labels)
-    ax_i.set_xticks(ticks, labels=labels)
-    ax_w_lon.set_xticks(ticks, labels=labels)
-    ax_w_arg.set_xticks(ticks, labels=labels)
+    # plt.gcf()
+    plt.rcParams["figure.figsize"] = (6.4, 4.8)
+    plt.rcParams["axes.labelsize"] = 12
+
+    if transparent:
+        for k in styles:
+            styles[k]["c"] = "white"
+        plt.rcParams["text.color"] = "white"
+        plt.rcParams["axes.labelcolor"] = "white"
+        plt.rcParams["axes.edgecolor"] = "white"
+        plt.rcParams["xtick.color"] = "white"
+        plt.rcParams["ytick.color"] = "white"
+
+    for i in range(len(names)):
+        if i < 2:
+            plt.plot(time_scale, elements[i], **styles[names[i]])
+        else:
+            plt.plot(time_scale, np.rad2deg(elements[i]), **styles[names[i]])
+
+        plt.xticks(ticks, labels=labels)
+
+        plt.xlabel("Обороты")
+        plt.ylabel(f"{names_greek[i]}, {units[i]}" if units[i] != "" else f"{names_greek[i]}")
+
+        plt.grid(True)
+        plt.tight_layout()
+
+        plt.savefig(f"data/current/{names[i]}.png", transparent=transparent)
+        plt.clf()
+
 
     print(f"[+] Exiting program.\n"
           f"[+] Execution took: {(dt.now() - time_start).total_seconds()}")
 
-    plt.show()
-
-
 
 if __name__ == '__main__':
+    transparent = True
     main()

@@ -4,61 +4,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import os
-import gc
-import csv
 import pandas as pd
+import sys
 
 from visibility.visibility import visibility
 
-import satellites_orbits
-from models import experiments
+import variations
 
 from tqdm import tqdm
+import plotter
+import parser
+import models
+import analyzer
+import scipy
 
 def visibility_experiment():
     np.set_printoptions(precision=3, suppress=True)
 
-    n = 10000
-    cycle_number = 4
+    n = 100
+    cycle_number = 6
 
     print(f"[+] Output image resolution: {n}x{n} pixels.")
     visibility((n, n), cycle_number)
 
 
-def eccentricity_experiment():
-    periods = 3000
-    chosen_orbit = satellites_orbits.orbits[0]
-    chosen_eccentricity = 0.
-    elements, t = experiments.eccentricity(chosen_orbit, chosen_eccentricity, periods)
-    experiments.plot_elements(elements, chosen_eccentricity, periods, t)
-
-
-def inclination_experiment():
-    periods = 3000
-    chosen_orbit = satellites_orbits.orbits[0]
-    step = .1
-    a, b = 56, 58
-
-    with tqdm(total = int((b - a) / step)) as pbar:
-        for inc_iter in np.arange(a, b, step):
-            inc = np.deg2rad(inc_iter)
-            elements, t = experiments.inclination(chosen_orbit, inc, periods)
-            experiments.elements_to_csv(elements, periods)
-            pbar.update(1)
-            del elements
-            gc.collect()
-        # experiments.plot_elements(elements, inc, periods, t)
-
-
 def analyze_files():
-    dir = os.path.join(os.getcwd(), "data", "elements", "data", "nz-step-0.1")
-    files = os.listdir(dir)
+    directory = os.path.join(os.getcwd(), "data", "elements", "data", "nz-step-0.1")
+    files = os.listdir(directory)
 
     deviations = []
 
     for file in files:
         # name = file.split("-")[1]
-        df = pd.read_csv(os.path.join(dir, file))
+        df = pd.read_csv(os.path.join(directory, file))
 
         for val in df:
             df[val] -= df[val].values[0]
@@ -66,71 +44,125 @@ def analyze_files():
 
         deviations.append(df.describe().loc["max"].to_numpy())
 
+    # plt.rcParams["ytick.left"] = False
+    plt.rcParams["ytick.labelleft"] = False
+
+    transparent = True
+    if transparent:
+        lc = "white"
+        plt.rcParams["text.color"] = "white"
+        plt.rcParams["axes.labelcolor"] = "white"
+        plt.rcParams["axes.edgecolor"] = "white"
+        plt.rcParams["xtick.color"] = "white"
+        plt.rcParams["ytick.color"] = "white"
+
     df = pd.DataFrame(deviations)
-    fig, ax = plt.subplots()
-    ax.plot(np.linspace(56, 58, len(deviations)), df[1], label="Эксцентриситет")
-    ax.plot(np.linspace(56, 58, len(deviations)), df[2], label="Наклонение")
-    ax.set_xticks(np.linspace(56, 58, 21))
-    ax.legend(loc="upper center", ncol=2, frameon=False)
-    ax.grid(True)
-    plt.show()
-    # 0.023962   0.012684
-    # index_dev_min = np.argmin(deviations, axis=1)[:, [1, 2]]
-    # print(index_dev_min)
-    # print(deviations[index_dev_min, [1, 2]])
 
-    # print(df.describe())
-
-
-def plot_from_file(path):
-    df = pd.read_csv(path)
-
-    names = ["a", "e", "i", "O", "w"]
-    titles = ["a", "e", "i", r"$\Omega$", r"$\omega$"]
-    units = ["км", "", r"$\circ$", r"$\circ$", r"$\circ$"]
-
-    n_periods = int(path.split("-")[-1].split(".")[0])
-    t = df["a"].values.shape[0]
-    print(t)
-    n = 10
-    time_scale = np.linspace(0, t, df["a"].values.shape[0])
-    ticks = np.linspace(0, t, n + 1)
-    labels = np.linspace(0, n_periods, n + 1, dtype=int)
-
-    fig = plt.figure(figsize=(8, 6))
-    ax_inc = fig.add_subplot(211)
-    ax_inc.plot(time_scale, np.rad2deg(df["i"].values), label="i", c="black", lw=1)
-    # ax_inc.plot(time_scale, np.rad2deg(df["i"].values - df.i.values[0]), label="i", c="black", lw=1)
-    ax_inc.set_xticks(ticks)
-    ax_inc.set_xticklabels(labels)
-    ax_inc.grid(True)
-    ax_inc.set_ylabel(r"Наклонение $i,\circ$")
-
-    ax_e = fig.add_subplot(212, sharex=ax_inc)
-    ax_e.plot(time_scale, df["e"].values, label="e", c="black", lw=1)
-    # ax_e.plot(time_scale, df["e"].values - df.e.values[0], label="e", c="black", lw=1)
-    # ax_e.set_xticks(ticks)
-    # ax_e.set_xticklabels(labels)
-    # ax_e.set_xticks([])
-    # ax_e.set_xticklabels([])
-
-    ax_e.grid(True)
-    ax_e.set_ylabel(r"Эксцентрисистет $e$")
     plt.gcf()
-    plt.subplots_adjust(hspace=0)
+    # plt.rcParams["figure.figsize"] = (12, 4)
+    plt.rcParams["xtick.labelsize"] = 10
 
-    # fig.suptitle("Элементы")
-    # fig.suptitle("Возмущения в элементах")
+    plt.plot(np.linspace(56, 58, len(deviations)), df[1], label="Эксцентриситет")
+    plt.plot(np.linspace(56, 58, len(deviations)), df[2], label="Наклонение")
 
-    plt.show()
+    plt.xlabel(r"Наклонение $\circ$")
+    plt.xticks(np.linspace(56, 58, 21), rotation=90)
+
+    # plt.yticks([])
+
+    plt.legend(loc="upper center", ncol=2, frameon=False)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("deviations.png", transparent=transparent)
+
+
+# def plot_from_file(path):
+#     transparent = True
+#     df = pd.read_csv(path)
+#
+#     n_periods = int(path.split("-")[-1].split(".")[0])
+#     t = df["a"].values.shape[0]
+#     print(t)
+#     n = 10
+#     time_scale = np.linspace(0, t, df["a"].values.shape[0])
+#     ticks = np.linspace(0, t, n + 1)
+#     labels = np.linspace(0, n_periods, n + 1, dtype=int)
+#
+#     names = ["a", "e", "i", "O", "w"]
+#     names_greek = ["a", "e", "i", r"$\Omega$", r"$\omega$"]
+#     units = ["км", "", r"$\circ$", r"$\circ$", r"$\circ$"]
+#
+#     styles = {
+#         "a": {"c": "black", "lw": .75},
+#         "e": {"c": "black", "lw": .75},
+#         "i": {"c": "black", "lw": .75},
+#         "O": {"c": "black", "lw": .75, "ls": "", "marker": ".", "ms": 2.5, "alpha": 1},
+#         "w": {"c": "black", "lw": .75, "ls": "", "marker": ".", "ms": 2.5, "alpha": 1}
+#     }
+#
+#     # plt.gcf()
+#     plt.rcParams["figure.figsize"] = (12, 4)
+#     plt.rcParams["axes.labelsize"] = 12
+#
+#     if transparent:
+#         for k in styles:
+#             styles[k]["c"] = "white"
+#         plt.rcParams["text.color"] = "white"
+#         plt.rcParams["axes.labelcolor"] = "white"
+#         plt.rcParams["axes.edgecolor"] = "white"
+#         plt.rcParams["xtick.color"] = "white"
+#         plt.rcParams["ytick.color"] = "white"
+#
+#     for i in range(len(names)):
+#         if i < 2:
+#             plt.plot(time_scale, df[names[i]].values, **styles[names[i]])
+#         else:
+#             plt.plot(time_scale, np.rad2deg(df[names[i]].values), **styles[names[i]])
+#
+#         plt.xticks(ticks, labels=labels)
+#
+#         plt.xlabel("Обороты")
+#         plt.ylabel(f"{names_greek[i]}, {units[i]}" if units[i] != "" else f"{names_greek[i]}")
+#
+#         plt.grid(True)
+#
+#         plt.tight_layout()
+#         plt.savefig(f"data/current/{names[i]}.png", transparent=transparent)
+#         plt.clf()
+
 
 def main():
     time_start = dt.now()
+    orbit = parser.read_orbits("glonass")[0]
+    # orbit[1] = 0
 
-    # eccentricity_experiment()
-    # inclination_experiment()
+    models.run_not_perturbed(orbit, 1, "data/not_perturbed")
+    models.run_not_perturbed(orbit, 3000, "data/not_perturbed")
+    analyzer.analyze_precision()
+
+    # models.glonass_circ(3000, "data/current")
+    # models.gps_circ(3000, "data/current")
+    # models.gps_el(3000, "data/current")
+    # plotter.plot_all_sep("data/current/current.csv", n_periods=3000)
+
+    # models.orbits_states()
+    # plotter.plot_orbits("data/orbits", shape="square")
+
+    # variations.inc_variation(3000, "data\\elements\\data\\step-0.1", 55.5, 55.6, 0.1)
+    # variations.analyze("data\\elements\\data\\step-1.0", "")
+    # variations.analyze("data\\elements\\data\\step-0.1", "")
+
+    # analyzer.analyze_deviations("data\\elements\\data\\step-0.1\\inc-55.60--p-3000.csv")
+    # analyzer.analyze_deviations("data\\elements\\data\\step-0.1\\inc-56.00--p-3000.csv")
+    # analyzer.analyze_deviations("data\\elements\\data\\step-0.1\\inc-56.50--p-3000.csv")
+
+    # plotter.plot_all_sep("data\\elements\\data\\step-0.1\\inc-55.60--p-3000.csv", "data\\inc-55.60", n_periods=3000)
+    # plotter.plot_all_sep("data\\elements\\data\\step-0.1\\inc-56.00--p-3000.csv", "data\\inc-56.00", n_periods=3000)
+    # plotter.plot_all_sep("data\\elements\\data\\step-0.1\\inc-56.50--p-3000.csv", "data\\inc-56.50", n_periods=3000)
     # analyze_files()
-    plot_from_file("data/elements/data/nz-step-0.1/inc-57.60--p-3000.csv")
+    # plot_from_file("data/elements/data/nz-step-0.1/inc-57.60--p-3000.csv")
+
+    # visibility_experiment()
 
     print(f"[+] Exiting program.\n"
           f"[+] Execution took: {(dt.now() - time_start).total_seconds()}")

@@ -16,8 +16,12 @@ class OrbitObject:
     vs_rec = np.zeros((3, 1))
 
     def __init__(self, kepler_elements):
-        self.a = kepler_elements[0]
-        self.e = kepler_elements[1]
+        self.a = float(kepler_elements[0])
+        self.e = float(kepler_elements[1])
+        # self.inc = np.deg2rad(kepler_elements[2])
+        # self.w_lon = np.deg2rad(kepler_elements[3])
+        # self.w_arg = np.deg2rad(kepler_elements[4])
+        # self.anomaly_m = np.deg2rad(kepler_elements[5])
         self.inc = kepler_elements[2]
         self.w_lon = kepler_elements[3]
         self.w_arg = kepler_elements[4]
@@ -167,7 +171,7 @@ class OrbitObject:
         surface_object = SurfaceObject(latitude, longitude)
         u1 = (self.cs_rec - surface_object.cs_rec) / linalg.norm(self.cs_rec - surface_object.cs_rec)
         u2 = surface_object.cs_rec / linalg.norm(surface_object.cs_rec)
-        angle = np.arccos(u1 * u2)
+        angle = np.arccos(u1 @ u2)
 
         if angle <= np.pi / 2:
             return True
@@ -186,12 +190,12 @@ class OrbitObject:
             -mu * state[2] / np.power(radius, 3),
         ])
 
-    def calculate_coordinates(self, t0_s=0, n=1):
+    def calculate_coordinates(self, n=1):
         state = np.hstack((self.cs_rec,
                            self.vs_rec))
 
         sol = solve_ivp(self.f,
-                        (t0_s, n * self.T),
+                        (0, n * self.T),
                         state,
                         method="DOP853",
                         rtol=0,
